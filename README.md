@@ -9,7 +9,8 @@ Automatically compress daily-rotated Laravel log files to tar.gz archives with o
 - ✅ **Optional encryption** AES-256-CBC via OpenSSL with PBKDF2 hashing
 - ✅ **Configurable retention** skip logs newer than N days (default: 1)
 - ✅ **Safe deletion** remove originals only after successful compression
-- ✅ **Manual & scheduled** Artisan command + task scheduler support
+- ✅ **Auto-scheduled** runs daily automatically, zero config needed
+- ✅ **Manual & scheduled** Artisan command + custom scheduler support
 - ✅ **Error resilience** continue processing on individual file errors, report all issues
 - ✅ **Secure passwords** passed via environment variables, never exposed in process list
 
@@ -50,6 +51,12 @@ Add to your `.env` file:
 ```env
 # Optional: Set encryption password
 LOG_COMPRESS_PASSWORD=your_secure_password_here
+
+# Optional: Disable auto-schedule (default: true)
+LOG_COMPRESS_AUTO_SCHEDULE=true
+
+# Optional: Change schedule time (default: 00:00)
+LOG_COMPRESS_SCHEDULE_TIME=00:00
 ```
 
 ### Configuration File
@@ -66,6 +73,12 @@ return [
 
     // Only compress logs older than N days (prevents active log compression)
     'older_than_days' => 1,
+
+    // Automatically schedule daily compression (default: true)
+    'auto_schedule' => env('LOG_COMPRESS_AUTO_SCHEDULE', true),
+
+    // Time of day for auto-scheduled compression (24h format)
+    'schedule_time' => env('LOG_COMPRESS_SCHEDULE_TIME', '00:00'),
 ];
 ```
 
@@ -87,19 +100,56 @@ Encrypt archives with a specific password (overrides config):
 php artisan log:compress --password=my_secure_password
 ```
 
-### Scheduled Execution
+### Auto-Scheduled Execution
 
-Add to `app/Console/Kernel.php`:
+By default, the package **automatically registers** a daily scheduled task to compress logs. No manual setup required — just ensure your Laravel scheduler is running:
+
+```bash
+# Add to crontab (if not already configured)
+* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+#### Configure Auto-Schedule
+
+Via `.env`:
+
+```env
+# Disable auto-schedule (default: true)
+LOG_COMPRESS_AUTO_SCHEDULE=false
+
+# Change schedule time (default: 00:00)
+LOG_COMPRESS_SCHEDULE_TIME=02:00
+```
+
+#### Manual Schedule (if auto-schedule is disabled)
+
+If you set `LOG_COMPRESS_AUTO_SCHEDULE=false`, add to `app/Console/Kernel.php` (Laravel 10) or `routes/console.php` (Laravel 11+):
+
+**Laravel 10** — `app/Console/Kernel.php`:
 
 ```php
 protected function schedule(Schedule $schedule)
 {
-    // Compress logs daily at 2 AM
     $schedule->command('log:compress')->dailyAt('02:00');
-
-    // Or run hourly
-    $schedule->command('log:compress')->hourly();
 }
+```
+
+**Laravel 11** — `routes/console.php`:
+
+```php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('log:compress')->dailyAt('02:00');
+```
+
+**Laravel 12 / 13** — `bootstrap/app.php`:
+
+```php
+use Illuminate\Console\Scheduling\Schedule;
+
+->withSchedule(function (Schedule $schedule) {
+    $schedule->command('log:compress')->dailyAt('02:00');
+})
 ```
 
 ## How It Works
@@ -152,8 +202,8 @@ echo "LOG_COMPRESS_PASSWORD=MySecurePass123" >> .env
 # 3. Publish config (optional)
 php artisan vendor:publish --tag=log-compress-config
 
-# 4. Update Kernel.php to schedule compression
-# See "Scheduled Execution" section above
+# 4. Auto-schedule is enabled by default (runs daily at 00:00)
+# To customize: set LOG_COMPRESS_SCHEDULE_TIME=02:00 in .env
 ```
 
 ### Daily Operation

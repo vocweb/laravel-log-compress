@@ -19,7 +19,7 @@ Automatically compress daily-rotated Laravel log files to tar.gz archives with o
 | Component | Version |
 |---|---|
 | PHP | 8.1+ |
-| Laravel | 10.0+, 11.0+, 12.0+ |
+| Laravel | 10.x, 11.x, 12.x, 13.x |
 | System Tools | `tar`, `openssl` (for encryption) |
 
 Typical Linux/macOS installations have both tools. Windows requires GNU tar/openssl.
@@ -123,7 +123,7 @@ LOG_COMPRESS_SCHEDULE_TIME=02:00
 
 #### Manual Schedule (if auto-schedule is disabled)
 
-If you set `LOG_COMPRESS_AUTO_SCHEDULE=false`, add to `app/Console/Kernel.php` (Laravel 10) or `routes/console.php` (Laravel 11+):
+If you set `LOG_COMPRESS_AUTO_SCHEDULE=false`, register the schedule manually:
 
 **Laravel 10** — `app/Console/Kernel.php`:
 
